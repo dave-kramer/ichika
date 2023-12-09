@@ -47,7 +47,7 @@ class Trailers(commands.Cog):
 
                     print("Trailers checked.")
                 else:
-                    print(f"Error fetching trailers. Status Code: {response.status_code}")
+                    print(f"Error fetching MAL Trailers. Status Code: {response.status_code}")
             else:
                 print("No valid channel ID set for trailers. Skipping check.")
 

@@ -18,7 +18,7 @@ class AnimeNewsNetwork(commands.Cog):
     def cog_unload(self):
         self.check_news.cancel()
 
-    @tasks.loop(seconds=60)
+    @tasks.loop(seconds=300)
     async def check_news(self):
         try:
             if self.CHANNEL_ID:
@@ -29,7 +29,7 @@ class AnimeNewsNetwork(commands.Cog):
                     print('Error fetching news. Please try again later.')
                     return
 
-                entries = reversed(feed.entries[:10])
+                entries = reversed(feed.entries[:5])
                 last_entry_publish_date = self.get_last_news_publish_date()
                 current_time = datetime.utcnow().timestamp()
 
@@ -41,15 +41,17 @@ class AnimeNewsNetwork(commands.Cog):
                     if entry_publish_timestamp > last_entry_publish_date:
                         title = entry.title
                         link = entry.link
-                        description = entry.summary
 
-                        embed = discord.Embed(title=title, url=link, description=description, color=0x7289DA)
+                        message_content = f"**Anime News Network:** [{title}]({link})\n{link}"
 
                         channel = self.client.get_channel(int(self.CHANNEL_ID))
-                        await channel.send(embed=embed)
+                        await channel.send(message_content)
 
                 # Update the last checked entry publish date in the database
                 self.set_last_news_publish_date(current_time)
+
+                print("News checked.")
+
             else:
                 print("No valid channel ID set for AnimeNewsNetwork. Skipping check.")
 

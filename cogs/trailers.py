@@ -44,8 +44,8 @@ class Trailers(commands.Cog):
                             await channel.send(message)
 
                     self.set_previous_trailer_state(current_state)
-
                     print("Trailers checked.")
+
                 else:
                     print(f"Error fetching MAL Trailers. Status Code: {response.status_code}")
             else:

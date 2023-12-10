@@ -30,15 +30,14 @@ class AnimeNewsNetwork(commands.Cog):
                     return
 
                 entries = reversed(feed.entries[:5])
-                last_entry_publish_date = self.get_last_news_publish_date()
-                current_time = datetime.utcnow().timestamp()
+                previous_entry_ids = self.get_previous_news_entry_ids()
+                current_state = []
 
                 for entry in entries:
-                    entry_publish_date_str = entry.published
-                    entry_publish_date = datetime.strptime(entry_publish_date_str, "%a, %d %b %Y %H:%M:%S %z")
-                    entry_publish_timestamp = int(entry_publish_date.timestamp())
+                    entry_id = int(entry.id.split('.')[-1])
+                    current_state.append(entry_id)
 
-                    if entry_publish_timestamp > last_entry_publish_date:
+                    if entry_id not in previous_entry_ids:
                         title = entry.title
                         link = entry.link
 
@@ -47,9 +46,7 @@ class AnimeNewsNetwork(commands.Cog):
                         channel = self.client.get_channel(int(self.CHANNEL_ID))
                         await channel.send(message_content)
 
-                # Update the last checked entry publish date in the database
-                self.set_last_news_publish_date(current_time)
-
+                self.set_previous_news_entry_ids(current_state)
                 print("News checked.")
 
             else:
@@ -74,19 +71,19 @@ class AnimeNewsNetwork(commands.Cog):
         conn.close()
         self.CHANNEL_ID = channel_id
 
-    def get_last_news_publish_date(self):
+    def get_previous_news_entry_ids(self):
         conn = sqlite3.connect('db/mal_users.db')
         c = conn.cursor()
-        c.execute('SELECT setting_value FROM bot_settings WHERE setting_key = "last_news_publish_date"')
+        c.execute('SELECT setting_value FROM bot_settings WHERE setting_key = "previous_news_entry_ids"')
         result = c.fetchone()
         conn.close()
-        
-        return round(float(result[0])) if result is not None else 0
+        return [int(entry_id) for entry_id in result[0].split(',')] if result is not None else []
 
-    def set_last_news_publish_date(self, last_news_publish_date):
+    def set_previous_news_entry_ids(self, previous_news_entry_ids):
+        entry_ids_str = ','.join(map(str, previous_news_entry_ids))
         conn = sqlite3.connect('db/mal_users.db')
         c = conn.cursor()
-        c.execute('INSERT OR REPLACE INTO bot_settings (setting_key, setting_value) VALUES (?, ?)', ('last_news_publish_date', str(last_news_publish_date)))
+        c.execute('INSERT OR REPLACE INTO bot_settings (setting_key, setting_value) VALUES (?, ?)', ('previous_news_entry_ids', entry_ids_str))
         conn.commit()
         conn.close()
 
@@ -100,7 +97,6 @@ class AnimeNewsNetwork(commands.Cog):
         channel_link = f"https://discord.com/channels/{ctx.guild.id}/{channel_id}"
 
         await ctx.send(f"Anime news updates will now be found in [{channel_name}]({channel_link}), from now on you'll receive the latest news.")
-
 
 async def setup(client):
     await client.add_cog(AnimeNewsNetwork(client))

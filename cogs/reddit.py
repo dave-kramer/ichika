@@ -46,7 +46,7 @@ class Reddit(commands.Cog):
                             embed = discord.Embed(title=title, url=f'https://www.reddit.com/r/eden/comments/{thread_id}/', description=description, color=0x00ff00)
                             if thumbnail.lower() != "self":
                                 embed.set_thumbnail(url=thumbnail)
-                            embed.set_footer(text=f'{author} @ /r/{subreddit}', icon_url='https://cdn3.iconfinder.com/data/icons/2018-social-media-logotypes/1000/2018_social_media_popular_app_logo_reddit-512.png')
+                            embed.set_footer(text=f'{author} @ /r/{subreddit}', icon_url='https://github.com/dave-kramer/ichika/blob/main/icons/reddit.png?raw=true')
 
                             # Send the embed to the monitored channel
                             channel = self.bot.get_channel(int(self.CHANNEL_ID))

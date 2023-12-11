@@ -1,11 +1,13 @@
 import os
 import discord
 from discord.ext import commands, tasks
+from discord import Game, ActivityType
 import requests
 import sqlite3
 import asyncio
 from datetime import datetime
 from dotenv import load_dotenv
+import random
 
 load_dotenv()
 
@@ -27,10 +29,29 @@ def initialize_database():
     conn.commit()
     conn.close()
 
+@tasks.loop(minutes=10)
+async def change_status():
+    server = client.guilds[0]
+    display_names = [member.display_name for member in server.members]
+    
+    statuses = [
+        Game(name=f"with {random.choice(display_names)}'s knob"),
+        Game(name="Hentai Hunter"),
+        discord.Activity(type=ActivityType.watching, name=f"{random.choice(display_names)}'s every move"),
+        discord.Activity(type=ActivityType.watching, name=f"The Boys"),
+        discord.Activity(type=ActivityType.listening, name="EDEN")
+    ]
+    
+    status = random.choice(statuses)
+    await client.change_presence(activity=status)
+
+@client.event
+async def on_ready():
+    await change_status.start()
+
 async def load_extensions():
     for filename in os.listdir("./cogs"):
         if filename.endswith(".py"):
-            # cut off the .py from the file name
             await client.load_extension(f"cogs.{filename[:-3]}")
 
 async def main():

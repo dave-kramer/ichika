@@ -53,7 +53,7 @@ class Spotify(commands.Cog):
             embed.set_thumbnail(url=activity.album_cover_url)
 
         embed.set_author(name=member.display_name, icon_url=member.avatar.url)
-        embed.set_footer(text='Spotify', icon_url='https://cdn0.iconfinder.com/data/icons/social-media-2474/128/spotify_interface_media_social_logo-512.png')
+        embed.set_footer(text='Spotify', icon_url='https://github.com/dave-kramer/ichika/blob/main/icons/spotify.png?raw=true')
 
         await channel.send(embed=embed)
 

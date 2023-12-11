@@ -7,6 +7,11 @@ class Spotify(commands.Cog):
         self.client = client
         self.CHANNEL_ID = None
         self.last_song = {}
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        self.CHANNEL_ID = self.get_spotify_channel_id()
+        print(f'Loaded Spotify cog')
         self.spotify_check.start()
 
     def cog_unload(self):
@@ -56,11 +61,6 @@ class Spotify(commands.Cog):
         embed.set_footer(text='Spotify', icon_url='https://github.com/dave-kramer/ichika/blob/main/icons/spotify.png?raw=true')
 
         await channel.send(embed=embed)
-
-    @commands.Cog.listener()
-    async def on_ready(self):
-        self.CHANNEL_ID = self.get_spotify_channel_id()
-        print(f'Loaded Spotify cog')
 
     def get_spotify_channel_id(self):
         conn = sqlite3.connect('db/mal_users.db')

@@ -24,7 +24,7 @@ def initialize_database():
     c = conn.cursor()
     c.execute('CREATE TABLE IF NOT EXISTS mal_users (mal_username TEXT PRIMARY KEY, last_check REAL)')
     c.execute('CREATE TABLE IF NOT EXISTS bot_settings (setting_key TEXT PRIMARY KEY, setting_value TEXT)')
-    c.execute('CREATE TABLE IF NOT EXISTS subreddits (subreddit_name TEXT PRIMARY KEY, checked_subreddits REAL)')
+    c.execute('CREATE TABLE IF NOT EXISTS subreddits (subreddit_name TEXT PRIMARY KEY, last_check REAL)')
     c.execute('CREATE TABLE IF NOT EXISTS osrs_users (username TEXT PRIMARY KEY, highscore REAL)')
     
     conn.commit()

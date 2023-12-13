@@ -70,7 +70,7 @@ class OSRSHiscores(commands.Cog):
 
         embed = discord.Embed(color=0xFF0000)
         formatted_username = username.replace("_", " ").capitalize()
-        embed.set_author(name=formatted_username, icon_url='https://oldschool.runescape.wiki/images/HiScores_icon.png')
+        embed.set_author(name=formatted_username, url=f'https://secure.runescape.com/m=hiscore_oldschool/hiscorepersonal?user1={username}', icon_url='https://oldschool.runescape.wiki/images/HiScores_icon.png')
 
         stored_overall_data = stored_highscore[0].split(',')
         new_overall_data = new_highscore[0].split(',')
@@ -130,15 +130,17 @@ class OSRSHiscores(commands.Cog):
         
 
     @commands.command(name='highscore')
-    async def osrs_stats(self, ctx, username):
+    async def osrs_stats(self, ctx, *args):
+        username = "_".join(args)  # Replace spaces with underscores in the username
         try:
             if self.highscore_channel_id:
                 hiscores_data = self.fetch_hiscores(username)
 
                 if hiscores_data:
                     embed = discord.Embed(color=0x00ff00)
-
-                    embed.set_author(name=username.capitalize(), icon_url='https://oldschool.runescape.wiki/images/HiScores_icon.png')
+                    formatted_username = username.replace("_", " ").capitalize()
+                    embed.set_author(
+                        name=formatted_username, url=f'https://secure.runescape.com/m=hiscore_oldschool/hiscorepersonal?user1={username}', icon_url='https://oldschool.runescape.wiki/images/HiScores_icon.png')
 
                     for skill, data_line in zip(self.skills[1:], hiscores_data[1:]):
                         rank, level, experience = map(int, data_line.split(','))
@@ -159,8 +161,9 @@ class OSRSHiscores(commands.Cog):
                         inline=True
                     )
 
-                    embed.set_footer(text='Oldschool Runescape', icon_url='https://media.kbin.social/media/43/d4/43d476bdb07dfe85e0356a04dc681d0eeb66fab81da43874372d4a10960932da.png')
-                    
+                    embed.set_footer(text='Oldschool Runescape',
+                                    icon_url='https://media.kbin.social/media/43/d4/43d476bdb07dfe85e0356a04dc681d0eeb66fab81da43874372d4a10960932da.png')
+
                     channel = self.client.get_channel(int(self.highscore_channel_id))
                     await channel.send(embed=embed)
                 else:
@@ -169,7 +172,6 @@ class OSRSHiscores(commands.Cog):
                 print("No valid channel ID set for OSRS highscores & addosrsuser/removeosrsuser")
         except Exception as e:
             print(f"Error checking for OSRS highscores & addosrsuser/removeosrsuser: {str(e)}")
-
 
     @commands.command()
     @commands.has_permissions(administrator=True)

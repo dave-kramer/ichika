@@ -4,8 +4,8 @@ import requests
 import sqlite3
 
 class Reddit(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
+    def __init__(self, client):
+        self.client = client
         self.CHANNEL_ID = None
 
     @commands.Cog.listener()
@@ -14,7 +14,7 @@ class Reddit(commands.Cog):
         print(f'Loaded reddit cog')
         self.check_threads.start()
 
-    @tasks.loop(seconds=60)
+    @tasks.loop(seconds=180)
     async def check_threads(self):
         try:
             if self.CHANNEL_ID:

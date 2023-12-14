@@ -26,6 +26,15 @@ def initialize_database():
     c.execute('CREATE TABLE IF NOT EXISTS bot_settings (setting_key TEXT PRIMARY KEY, setting_value TEXT)')
     c.execute('CREATE TABLE IF NOT EXISTS subreddits (subreddit_name TEXT PRIMARY KEY, last_check REAL)')
     c.execute('CREATE TABLE IF NOT EXISTS osrs_users (username TEXT PRIMARY KEY, highscore REAL)')
+    c.execute('CREATE TABLE IF NOT EXISTS osrs_watchlist (' 
+          'watch_id INTEGER PRIMARY KEY AUTOINCREMENT, '
+          'item_id INTEGER, '
+          'item_name TEXT, '
+          'watch_price REAL, '
+          'trend_direction TEXT, '
+          'discord_user TEXT, '
+          'UNIQUE (item_id, discord_user)'
+          ')')
     
     conn.commit()
     conn.close()

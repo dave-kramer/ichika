@@ -185,9 +185,6 @@ class GrandExchange(commands.Cog):
                         item_id = list(ge_data.keys())[0]
                         item_data = ge_data[item_id]
                         current_price = item_data['price']
-                        print(current_price)
-                        print(watch_price)
-                        print(trend_direction)
                         if (trend_direction == 'above' and current_price >= watch_price) or (trend_direction == 'below' and current_price <= watch_price):
                             print(item_name)
                             await self.send_watch_alert(item_name, title_url, thumbnail_url, current_price, watch_price, trend_direction, user_id)

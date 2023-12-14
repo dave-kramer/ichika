@@ -2,11 +2,14 @@ import discord
 from discord.ext import commands, tasks
 import requests
 import sqlite3
+import base64
+import json
 
 class Reddit(commands.Cog):
-    def __init__(self, client):
-        self.client = client
+    def __init__(self, bot):
+        self.bot = bot
         self.CHANNEL_ID = None
+        self.reddit_credentials = self.load_reddit_credentials()
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -14,7 +17,16 @@ class Reddit(commands.Cog):
         print(f'Loaded reddit cog')
         self.check_threads.start()
 
-    @tasks.loop(seconds=180)
+    def load_reddit_credentials(self):
+        try:
+            with open("reddit.json", "r") as config_file:
+                config_data = json.load(config_file)
+                return config_data.get("reddit", {})
+        except FileNotFoundError:
+            print("reddit.json not found. Add reddit client id & client secret")
+            return {}
+
+    @tasks.loop(seconds=60)
     async def check_threads(self):
         try:
             if self.CHANNEL_ID:
@@ -48,13 +60,11 @@ class Reddit(commands.Cog):
                                 embed.set_thumbnail(url=thumbnail)
                             embed.set_footer(text=f'{author} @ /r/{subreddit}', icon_url='https://github.com/dave-kramer/ichika/blob/main/icons/reddit.png?raw=true')
 
-                            # Send the embed to the monitored channel
                             channel = self.bot.get_channel(int(self.CHANNEL_ID))
                             await channel.send(embed=embed)
 
-                # Update the database with the new state of sent thread IDs
                 self.update_database(subreddit, new_sent_thread_ids.get(subreddit, []))
-
+                print("Subreddits checked.")
             else:
                 print("No valid channel ID set for Reddit. Skipping check.")
 
@@ -75,7 +85,6 @@ class Reddit(commands.Cog):
             print(f"Error updating database: {str(e)}")
 
         finally:
-            # Close the database connection
             conn.close()
 
     def get_sent_thread_ids(self, subreddit):
@@ -87,7 +96,7 @@ class Reddit(commands.Cog):
         return result[0].split(',') if result and result[0] else []
 
     def get_latest_threads(self, subreddit):
-        base_url = 'https://www.reddit.com/r/'
+        base_url = 'https://oauth.reddit.com/r/'
         category = '/new'
 
         params = {
@@ -99,7 +108,10 @@ class Reddit(commands.Cog):
             'sr_detail': False,
         }
 
-        headers = {'User-Agent': 'ichika/1.0'}
+        headers = {
+            'User-Agent': 'ichika/1.0',
+            'Authorization': f'bearer {self.get_access_token()}',
+        }
 
         response = requests.get(f'{base_url}{subreddit}{category}.json', params=params, headers=headers)
 
@@ -109,6 +121,30 @@ class Reddit(commands.Cog):
         else:
             print(f'Error retrieving threads from {subreddit}. Please try again later.')
             return []
+
+    def get_access_token(self):
+        client_id = self.reddit_credentials.get("client_id")
+        client_secret = self.reddit_credentials.get("client_secret")
+
+        credentials = base64.b64encode(f"{client_id}:{client_secret}".encode("utf-8")).decode("utf-8")
+
+        headers = {
+            "Authorization": f"Basic {credentials}",
+            "User-Agent": "ichika/1.0", 
+        }
+
+        data = {
+            "grant_type": "client_credentials",
+        }
+
+        response = requests.post("https://www.reddit.com/api/v1/access_token", headers=headers, data=data)
+
+        if response.status_code == 200:
+            token_data = response.json()
+            return token_data.get("access_token")
+        else:
+            print(f"Error obtaining access token: {response.text}")
+            return None
 
     def get_monitored_subreddits(self):
         conn = sqlite3.connect('db/mal_users.db')

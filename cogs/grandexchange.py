@@ -188,7 +188,7 @@ class GrandExchange(commands.Cog):
                         print(current_price)
                         print(watch_price)
                         print(trend_direction)
-                        if (trend_direction == 'above' and current_price <= watch_price) or (trend_direction == 'below' and current_price >= watch_price):
+                        if (trend_direction == 'above' and current_price >= watch_price) or (trend_direction == 'below' and current_price <= watch_price):
                             print(item_name)
                             await self.send_watch_alert(item_name, title_url, thumbnail_url, current_price, watch_price, trend_direction, user_id)
                     

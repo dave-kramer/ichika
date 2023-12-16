@@ -94,7 +94,7 @@ class Pepper(commands.Cog):
         c.execute('SELECT setting_value FROM bot_settings WHERE setting_key = "previous_pepper_entry_ids"')
         result = c.fetchone()
         conn.close()
-        return [int(entry_id) for entry_id in result[0].split(',')] if result is not None else []
+        return [int(entry_id) for entry_id in result[0].split(',')] if result and result[0] else []
 
     def set_previous_pepper_entry_ids(self, previous_pepper_entry_ids):
         entry_ids_str = ','.join(map(str, previous_pepper_entry_ids))

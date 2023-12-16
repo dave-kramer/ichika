@@ -19,7 +19,7 @@ class UserUpdates(commands.Cog):
     def cog_unload(self):
         self.check_new_watched_anime.cancel()
 
-    @tasks.loop(seconds=180)
+    @tasks.loop(minutes=30)
     async def check_new_watched_anime(self):
         try:
             if self.CHANNEL_ID:
@@ -36,11 +36,11 @@ class UserUpdates(commands.Cog):
 
                     if response.status_code == 200:
                         history_data = response.json().get('data', [])
-                        current_time = datetime.utcnow().timestamp()
 
                         for entry in reversed(history_data):
                             entry_time_str = entry.get('date')
                             entry_time = datetime.fromisoformat(entry_time_str.replace("Z", "+00:00")).timestamp()
+
                             if entry_time > last_check:
                                 anime_title = entry['entry']['name']
                                 anime_url = entry['entry']['url']
@@ -49,11 +49,14 @@ class UserUpdates(commands.Cog):
                                 embed = discord.Embed(title=f"Watched {anime_title} - Episode {increment}", url=anime_url, color=0x7289DA)
                                 embed.set_author(name=mal_username, url=f'https://myanimelist.net/profile/{mal_username}')
 
+                                embed.set_footer(text=f"MyAnimeList", icon_url='https://image.myanimelist.net/ui/OK6W_koKDTOqqqLDbIoPAiC8a86sHufn_jOI-JGtoCQ')
                                 channel = self.client.get_channel(int(self.CHANNEL_ID))
                                 await channel.send(embed=embed)
 
+                                await asyncio.sleep(3)
+
                         with conn:
-                            conn.execute('UPDATE mal_users SET last_check = ? WHERE mal_username = ?', (current_time, mal_username))
+                            conn.execute('UPDATE mal_users SET last_check = ? WHERE mal_username = ?', (entry_time, mal_username))
 
                 print("Watched anime checked.")
             else:

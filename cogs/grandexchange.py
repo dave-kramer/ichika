@@ -53,6 +53,11 @@ class GrandExchange(commands.Cog):
     async def gewatch_command(self, ctx, *, input_string):
         try:
             if self.watchlist_channel_id:
+                user_id = str(ctx.author.id)
+                current_watch_count = self.get_user_watch_count(user_id)
+                if current_watch_count >= 10:
+                    await ctx.send(f"{ctx.author.mention}, you already have the maximum allowed price watches (10). Remove some, see !watchlist")
+                    return
                 match = re.match(r'^(?P<item_name>.*?)(?P<watch_price>\d+)$', input_string)
 
                 if match:
@@ -70,7 +75,6 @@ class GrandExchange(commands.Cog):
                             current_price = item_data['price']
                             trend_direction = 'above' if watch_price >= int(current_price) else 'below'
                             if watch_price != int(current_price):
-                                user_id = str(ctx.author.id)
                                 self.save_watch_details(item_data['id'], item_name, watch_price, trend_direction, user_id)
                                 item_detail = self.get_item_detail(item_data['id'])
                                 if item_detail:
@@ -134,6 +138,58 @@ class GrandExchange(commands.Cog):
         except Exception as e:
             print(f"Error checking for OSRS GE's Price Watch: {str(e)}")
 
+    @commands.command(name='watchlist')
+    async def watchlist_command(self, ctx):
+        try:
+            if self.watchlist_channel_id:
+                user_id = str(ctx.author.id)
+                watchlist_items = self.get_user_watchlist(user_id)
+
+                if watchlist_items:
+                    embed = discord.Embed(
+                        title=f"Price Watchlist",
+                        description="Remove items by doing !removepricewatch <item_name>",
+                        color=discord.Color.blue(),
+                    )
+                    if ctx.author.avatar and ctx.author.avatar.url:
+                        embed.set_author(name=f"{ctx.author.display_name}", icon_url=ctx.author.avatar.url)
+                    else:
+                        embed.set_author(name=f"{ctx.author.display_name}", icon_url=ctx.author.default_avatar.url)
+
+                    for item in watchlist_items:
+                        item_id, item_name, watch_price, trend_direction = item
+
+                        embed.add_field(
+                            name=f"{item_name}",
+                            value=f"{int(watch_price):,} GP or {trend_direction}",
+                            inline=False
+                        )
+                    embed.set_thumbnail(url='https://oldschool.runescape.wiki/images/thumb/Grand_Exchange_logo.png/150px-Grand_Exchange_logo.png')
+                    embed.set_footer(text=f"Grand Exchange's Price Watcher", icon_url='https://oldschool.runescape.wiki/images/thumb/Grand_Exchange_logo.png/150px-Grand_Exchange_logo.png')
+                    await ctx.send(embed=embed)
+                else:
+                    await ctx.send(f"{ctx.author.mention}, your watchlist is empty. Use `!pricewatch` to add items to your watchlist.")
+            else:
+                print("No valid channel ID set for OSRS GE's Price Watch")
+        except Exception as e:
+            print(f"Error getting watchlist: {str(e)}")
+
+    def get_user_watchlist(self, user_id):
+        conn = sqlite3.connect('db/mal_users.db')
+        c = conn.cursor()
+        c.execute('SELECT item_id, item_name, watch_price, trend_direction FROM osrs_watchlist WHERE discord_user = ?', (user_id,))
+        result = c.fetchall()
+        conn.close()
+        return result
+
+    def get_user_watch_count(self, user_id):
+        conn = sqlite3.connect('db/mal_users.db')
+        c = conn.cursor()
+        c.execute('SELECT COUNT(*) FROM osrs_watchlist WHERE discord_user = ?', (user_id,))
+        result = c.fetchone()[0]
+        conn.close()
+        return result
+
     def save_watch_details(self, item_id, item_name, watch_price, trend_direction, user_id):
         conn = sqlite3.connect('db/mal_users.db')
         c = conn.cursor()
@@ -141,6 +197,7 @@ class GrandExchange(commands.Cog):
                 (item_id, item_name, watch_price, trend_direction, user_id))
         conn.commit()
         conn.close()
+        print(f"User {user_id} added {item_name} to the watchlist with a watch price of {watch_price} GP.")
 
     async def send_watch_alert(self, item_name, title_url, thumbnail_url, current_price, watch_price, trend_direction, user_id):
         embed = discord.Embed(
@@ -233,7 +290,7 @@ class GrandExchange(commands.Cog):
     def remove_watch_details_by_item_name(self, item_name, user_id):
         conn = sqlite3.connect('db/mal_users.db')
         c = conn.cursor()
-        c.execute('DELETE FROM osrs_watchlist WHERE item_name = ? AND discord_user = ?', (item_name, user_id))
+        c.execute('DELETE FROM osrs_watchlist WHERE LOWER(item_name) = LOWER(?) AND discord_user = ?', (item_name, user_id))
         rows_affected = c.rowcount
         conn.commit()
         conn.close()

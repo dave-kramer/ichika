@@ -1,9 +1,11 @@
 import discord
 from discord.ext import commands, tasks
-import requests
 import sqlite3
 import asyncio
+import feedparser
 from datetime import datetime
+import time
+import re
 
 class UserUpdates(commands.Cog):
     def __init__(self, client):
@@ -19,7 +21,7 @@ class UserUpdates(commands.Cog):
     def cog_unload(self):
         self.check_new_watched_anime.cancel()
 
-    @tasks.loop(minutes=30)
+    @tasks.loop(minutes=5)
     async def check_new_watched_anime(self):
         try:
             if self.CHANNEL_ID:
@@ -31,32 +33,31 @@ class UserUpdates(commands.Cog):
 
                 for user in users:
                     mal_username, last_check = user
-                    history_url = f'https://api.jikan.moe/v4/users/{mal_username}/history'
-                    response = requests.get(history_url)
+                    feed_url = f'https://myanimelist.net/rss.php?type=rwe&u={mal_username}'
+                    feed = feedparser.parse(feed_url)
 
-                    if response.status_code == 200:
-                        history_data = response.json().get('data', [])
+                    for entry in reversed(feed.entries):
+                        entry_time = int(time.mktime(entry.published_parsed))
 
-                        for entry in reversed(history_data):
-                            entry_time_str = entry.get('date')
-                            entry_time = datetime.fromisoformat(entry_time_str.replace("Z", "+00:00")).timestamp()
+                        if entry_time > last_check:
+                            anime_title = entry.title
+                            anime_url = entry.link
+                            anime_episode = entry.description
 
-                            if entry_time > last_check:
-                                anime_title = entry['entry']['name']
-                                anime_url = entry['entry']['url']
-                                increment = entry['increment']
+                            match = re.search(r'Watching - (\d+)', anime_episode)
+                            episode_number = match.group(1) if match else "Unknown"
 
-                                embed = discord.Embed(title=f"Watched {anime_title} - Episode {increment}", url=anime_url, color=0x7289DA)
-                                embed.set_author(name=mal_username, url=f'https://myanimelist.net/profile/{mal_username}')
+                            embed = discord.Embed(title=f"Watched {anime_title} - Episode {episode_number}", url=anime_url, color=0x7289DA)
+                            embed.set_author(name=mal_username, url=f'https://myanimelist.net/profile/{mal_username}')
+                            embed.set_footer(text=f"MyAnimeList", icon_url='https://image.myanimelist.net/ui/OK6W_koKDTOqqqLDbIoPAiC8a86sHufn_jOI-JGtoCQ')
 
-                                embed.set_footer(text=f"MyAnimeList", icon_url='https://image.myanimelist.net/ui/OK6W_koKDTOqqqLDbIoPAiC8a86sHufn_jOI-JGtoCQ')
-                                channel = self.client.get_channel(int(self.CHANNEL_ID))
-                                await channel.send(embed=embed)
+                            channel = self.client.get_channel(int(self.CHANNEL_ID))
+                            await channel.send(embed=embed)
 
-                                await asyncio.sleep(3)
+                            await asyncio.sleep(3)
 
-                        with conn:
-                            conn.execute('UPDATE mal_users SET last_check = ? WHERE mal_username = ?', (entry_time, mal_username))
+                    with conn:
+                        conn.execute('UPDATE mal_users SET last_check = ? WHERE mal_username = ?', (entry_time, mal_username))
 
                 print("Watched anime checked.")
             else:

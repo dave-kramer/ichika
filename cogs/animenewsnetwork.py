@@ -3,6 +3,7 @@ from discord.ext import commands, tasks
 import feedparser
 import sqlite3
 from datetime import datetime
+import asyncio
 
 class AnimeNewsNetwork(commands.Cog):
     def __init__(self, client):
@@ -29,15 +30,13 @@ class AnimeNewsNetwork(commands.Cog):
                     print('Error fetching news. Please try again later.')
                     return
 
-                entries = reversed(feed.entries[:5])
-                previous_entry_ids = self.get_previous_news_entry_ids()
-                current_state = []
+                entries = reversed(feed.entries)
+                previous_pub_date = self.get_previous_news_pub_date()
 
                 for entry in entries:
-                    entry_id = int(entry.id.split('.')[-1])
-                    current_state.append(entry_id)
-
-                    if entry_id not in previous_entry_ids:
+                    pub_date = datetime.strptime(entry.published, '%a, %d %b %Y %H:%M:%S %z')
+                    pub_date_unix = int(pub_date.timestamp())
+                    if pub_date_unix > previous_pub_date:
                         title = entry.title
                         link = entry.link
 
@@ -46,7 +45,10 @@ class AnimeNewsNetwork(commands.Cog):
                         channel = self.client.get_channel(int(self.CHANNEL_ID))
                         await channel.send(message_content)
 
-                self.set_previous_news_entry_ids(current_state)
+                        self.set_previous_news_pub_date(pub_date_unix)
+
+                        await asyncio.sleep(3)
+
                 print("ANN News checked.")
 
             else:
@@ -71,19 +73,18 @@ class AnimeNewsNetwork(commands.Cog):
         conn.close()
         self.CHANNEL_ID = channel_id
 
-    def get_previous_news_entry_ids(self):
+    def get_previous_news_pub_date(self):
         conn = sqlite3.connect('db/mal_users.db')
         c = conn.cursor()
-        c.execute('SELECT setting_value FROM bot_settings WHERE setting_key = "previous_news_entry_ids"')
+        c.execute('SELECT setting_value FROM bot_settings WHERE setting_key = "previous_news_pub_date"')
         result = c.fetchone()
         conn.close()
-        return [int(entry_id) for entry_id in result[0].split(',')] if result is not None else []
+        return int(result[0]) if result else 0
 
-    def set_previous_news_entry_ids(self, previous_news_entry_ids):
-        entry_ids_str = ','.join(map(str, previous_news_entry_ids))
+    def set_previous_news_pub_date(self, pub_date_unix):
         conn = sqlite3.connect('db/mal_users.db')
         c = conn.cursor()
-        c.execute('INSERT OR REPLACE INTO bot_settings (setting_key, setting_value) VALUES (?, ?)', ('previous_news_entry_ids', entry_ids_str))
+        c.execute('INSERT OR REPLACE INTO bot_settings (setting_key, setting_value) VALUES (?, ?)', ('previous_news_pub_date', str(pub_date_unix)))
         conn.commit()
         conn.close()
 

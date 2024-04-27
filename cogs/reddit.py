@@ -4,6 +4,7 @@ import requests
 import sqlite3
 import base64
 import json
+import time
 
 class Reddit(commands.Cog):
     def __init__(self, bot):
@@ -36,24 +37,20 @@ class Reddit(commands.Cog):
                     print("No monitored subreddits. Skipping check.")
                     return
 
-                new_sent_thread_ids = {}
-
                 for subreddit in subreddits:
+                    print(subreddit)
                     threads = self.get_latest_threads(subreddit)
-                    sent_thread_ids = self.get_sent_thread_ids(subreddit)
+                    last_check = self.get_last_check(subreddit)
 
                     for thread in reversed(threads):
-                        thread_id = thread['data']['id']
+                        thread_created = thread['data']['created']
 
-                        if subreddit not in new_sent_thread_ids:
-                            new_sent_thread_ids[subreddit] = []
-                        new_sent_thread_ids[subreddit].append(thread_id)
-
-                        if thread_id not in sent_thread_ids:
+                        if thread_created > last_check:
                             title = thread['data']['title']
                             description = thread['data']['selftext']
                             thumbnail = thread['data']['thumbnail']
                             author = thread['data']['author']
+                            thread_id = thread['data']['id']
 
                             embed = discord.Embed(title=title, url=f'https://www.reddit.com/r/eden/comments/{thread_id}/', description=description, color=0x00ff00)
                             if thumbnail.lower() != "self":
@@ -63,7 +60,8 @@ class Reddit(commands.Cog):
                             channel = self.bot.get_channel(int(self.CHANNEL_ID))
                             await channel.send(embed=embed)
 
-                self.update_database(subreddit, new_sent_thread_ids.get(subreddit, []))
+                            self.update_database(subreddit, thread_created)
+
                 print("Subreddits checked.")
             else:
                 print("No valid channel ID set for Reddit. Skipping check.")
@@ -71,14 +69,11 @@ class Reddit(commands.Cog):
         except Exception as e:
             print(f"Error checking for latest subreddit: {str(e)}")
 
-    def update_database(self, subreddit, new_sent_thread_ids):
+    def update_database(self, subreddit, thread_created):
         try:
             conn = sqlite3.connect('db/mal_users.db')
             c = conn.cursor()
-
-            new_thread_ids_str = ",".join(new_sent_thread_ids)
-            update_query = 'UPDATE subreddits SET last_check = ? WHERE subreddit_name = ?;'
-            c.execute(update_query, (new_thread_ids_str, subreddit))
+            c.execute('UPDATE subreddits SET last_check = ? WHERE subreddit_name = ?;', (thread_created, subreddit))
             conn.commit()
 
         except Exception as e:
@@ -87,13 +82,16 @@ class Reddit(commands.Cog):
         finally:
             conn.close()
 
-    def get_sent_thread_ids(self, subreddit):
+    def get_last_check(self, subreddit):
         conn = sqlite3.connect('db/mal_users.db')
         c = conn.cursor()
         c.execute('SELECT last_check FROM subreddits WHERE subreddit_name = ?', (subreddit,))
         result = c.fetchone()
         conn.close()
-        return result[0].split(',') if result and result[0] else []
+        if result and result[0]:
+            return result[0]
+        else:
+            return None
 
     def get_latest_threads(self, subreddit):
         base_url = 'https://oauth.reddit.com/r/'
@@ -194,7 +192,8 @@ class Reddit(commands.Cog):
     def add_subreddit(self, subreddit):
         conn = sqlite3.connect('db/mal_users.db')
         c = conn.cursor()
-        c.execute('INSERT INTO subreddits (subreddit_name) VALUES (?)', (subreddit,))
+        current_timestamp = int(time.time())
+        c.execute('INSERT INTO subreddits (subreddit_name, last_check) VALUES (?, ?)', (subreddit, current_timestamp))
         conn.commit()
         conn.close()
 

@@ -53,7 +53,7 @@ class Reddit(commands.Cog):
                             thread_id = thread['data']['id']
 
                             embed = discord.Embed(title=title, url=f'https://www.reddit.com/r/eden/comments/{thread_id}/', description=description, color=0x00ff00)
-                            if thumbnail.lower() != "self":
+                            if thumbnail.lower() not in ["self", "spoiler"]:
                                 embed.set_thumbnail(url=thumbnail)
                             embed.set_footer(text=f'{author} @ /r/{subreddit}', icon_url='https://github.com/dave-kramer/ichika/blob/main/icons/reddit.png?raw=true')
 

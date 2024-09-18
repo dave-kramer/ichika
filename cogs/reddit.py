@@ -32,39 +32,54 @@ class Reddit(commands.Cog):
         try:
             if self.CHANNEL_ID:
                 subreddits = self.get_monitored_subreddits()
-
+    
                 if not subreddits:
                     print("No monitored subreddits. Skipping check.")
                     return
-
+    
                 for subreddit in subreddits:
                     print(subreddit)
                     threads = self.get_latest_threads(subreddit)
                     last_check = self.get_last_check(subreddit)
-
+    
                     for thread in reversed(threads):
                         thread_created = thread['data']['created']
-
+    
                         if thread_created > last_check:
                             title = thread['data']['title']
                             description = thread['data']['selftext']
                             thumbnail = thread['data']['thumbnail']
                             author = thread['data']['author']
                             thread_id = thread['data']['id']
-
-                            embed = discord.Embed(title=title, url=f'https://www.reddit.com/r/eden/comments/{thread_id}/', description=description, color=0x00ff00)
+    
+                            # Truncate description if it's too long
+                            if len(description) > 4096:
+                                description = description[:4093] + "..."
+    
+                            embed = discord.Embed(
+                                title=title,
+                                url=f'https://www.reddit.com/r/eden/comments/{thread_id}/',
+                                description=description,
+                                color=0x00ff00
+                            )
                             if thumbnail.lower() not in ["self", "spoiler"]:
                                 embed.set_thumbnail(url=thumbnail)
-                            embed.set_footer(text=f'{author} @ /r/{subreddit}', icon_url='https://github.com/dave-kramer/ichika/blob/main/icons/reddit.png?raw=true')
-
+                            embed.set_footer(
+                                text=f'{author} @ /r/{subreddit}',
+                                icon_url='https://github.com/dave-kramer/ichika/blob/main/icons/reddit.png?raw=true'
+                            )
+    
                             channel = self.bot.get_channel(int(self.CHANNEL_ID))
                             await channel.send(embed=embed)
-
+    
                             self.update_database(subreddit, thread_created)
-
+    
                 print("Subreddits checked.")
             else:
                 print("No valid channel ID set for Reddit. Skipping check.")
+    
+        except Exception as e:
+            print(f"Error checking for latest subreddit: {str(e)}")
 
         except Exception as e:
             print(f"Error checking for latest subreddit: {str(e)}")
